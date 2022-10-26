@@ -26,11 +26,6 @@ var abi = [
           "internalType": "address[]",
           "name": "cycle",
           "type": "address[]"
-        },
-        {
-          "internalType": "uint32",
-          "name": "amount_reduce",
-          "type": "uint32"
         }
       ],
       "name": "add_IOU",
@@ -102,25 +97,25 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 // TODO: Add any helper functions here!
 var graph = new Map();
 
-async function update(debtor, creditor, amount) {
-	var creditors = new Map();
-	if (graph.has(debtor.toLowerCase())) {
-		creditors = graph.get(debtor.toLowerCase());
+async function update(debtor, creditor) {
+	debtor = debtor.toLowerCase();
+	creditor = creditor.toLowerCase();
+	var creditors = new Set();
+	if (graph.has(debtor)) {
+		creditors = graph.get(debtor);
 	}
-	if (creditors.has(creditor.toLowerCase())) {
-		creditors.set(creditor.toLowerCase(),Number(creditors.get(creditor.toLowerCase()))+Number(amount));
-	}else{
-		creditors.set(creditor.toLowerCase(),Number(amount));
-	}
-	graph.set(debtor.toLowerCase(),creditors);
+	creditors.add(creditor);
+	console.log(creditors)
+	graph.set(debtor,creditors);
 }
 
 async function getNeighbors(node) {
-	if (graph.size < 1 || !graph.has(node.toLowerCase())) return [];
-	var creditors = graph.get(node.toLowerCase());
+	node = node.toLowerCase();
+	if (graph.size < 1 || !graph.has(node)) return [];
+	var creditors = graph.get(node);
 	var neighbors = [];
 	if (creditors == null) return [];
-	for (const key of creditors.keys()) { neighbors.push(key);}
+	for (const creditor of creditors) { neighbors.push(creditor);}
 	return neighbors;
 }
 
@@ -138,12 +133,14 @@ async function getUsers() {
 
 // TODO: Get the total amount owed by the user specified by 'user'
 async function getTotalOwed(user) {
-	var amount = 0;
-	var history = await getAllFunctionCalls(contractAddress, "add_IOU");
-	for (const call of history) {
-		if (call.from.toLowerCase() == user.toLowerCase()) {
-			amount += Number(call.args[1]);
-		}
+	user = user.toLowerCase();
+	var amount = Number(0);
+	var creditors = graph.get(user);
+	console.log(creditors);
+	if (creditors == null) return 0;
+	for (const creditor of creditors) {
+		var debt = await BlockchainSplitwise.lookup(user, creditor);
+		amount += debt;
 	}
 	return amount;
 }
@@ -152,10 +149,11 @@ async function getTotalOwed(user) {
 // Return null if you can't find any activity for the user.
 // HINT: Try looking at the way 'getAllFunctionCalls' is written. You can modify it if you'd like.
 async function getLastActive(user) {
+	user = user.toLowerCase();
 	let history = await getAllFunctionCalls(contractAddress,"add_IOU");
 	var last = 0;
 	for (const call of history) {
-		if (call.from.toLowerCase() == user.toLowerCase() || call.args[0].toLowerCase() == user.toLowerCase()) {
+		if (call.from.toLowerCase() == user || call.args[0].toLowerCase() == user) {
 			last = call.t;
 		}
 	}
@@ -166,25 +164,13 @@ async function getLastActive(user) {
 // The person you owe money is passed as 'creditor'
 // The amount you owe them is passed as 'amount'
 async function add_IOU(creditor, amount) {
-	await update(defaultAccount, creditor, amount);
+	creditor = creditor.toLowerCase();
+	defaultAccount = defaultAccount.toLowerCase();
+	await update(defaultAccount, creditor);
 	let cycle = await doBFS(defaultAccount, creditor,getNeighbors);
-	amount_reduce = Number.MAX_SAFE_INTEGER;
-	console.log(cycle);
-	console.log(graph);
-	if (cycle == null) {
-		cycle = [];
-		amount_reduce = 0;
-	} else {
-		for (let i = 0; i < cycle.length; ++i){
-			amount_reduce = Math.min(graph.get(cycle[i]).get(cycle[(i+1)%cycle.length]),amount_reduce);
-		}
-		for (let i = 0; i < cycle.length; ++i) {
-			graph.get(cycle[i]).get(cycle[(i+1)%cycle.length]) -= amount_reduce;
-		} 
-	}
-	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle, amount_reduce);
+	if (cycle == null) {cycle = [];}
+	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, Number(amount), cycle);
 }
-
 // =============================================================================
 //                              Provided Functions
 // =============================================================================
