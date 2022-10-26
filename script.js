@@ -117,9 +117,9 @@ async function update(debtor, creditor, amount) {
 
 async function getNeighbors(node) {
 	if (graph.size < 1 || !graph.has(node.toLowerCase())) return [];
-	var creditors = graph[node.toLowerCase()];
+	var creditors = graph.get(node.toLowerCase());
 	var neighbors = [];
-	if (creditors.size() < 1) return [];
+	if (creditors == null) return [];
 	for (const key of creditors.keys()) { neighbors.push(key);}
 	return neighbors;
 }
@@ -130,8 +130,6 @@ async function getUsers() {
 	let users = new Set();
 	var history = await getAllFunctionCalls(contractAddress,"add_IOU");
 	for (const call of history) {
-		// console.log(call.from);
-		// console.log(call.args[0]);
 		users.add(call.from.toLowerCase());
 		users.add(call.args[0].toLowerCase());
 	}
@@ -169,20 +167,22 @@ async function getLastActive(user) {
 // The amount you owe them is passed as 'amount'
 async function add_IOU(creditor, amount) {
 	await update(defaultAccount, creditor, amount);
-	let circle = await doBFS(defaultAccount, creditor,getNeighbors);
+	let cycle = await doBFS(defaultAccount, creditor,getNeighbors);
 	amount_reduce = Number.MAX_SAFE_INTEGER;
-	if (circle == null) {
-		circle = [];
+	console.log(cycle);
+	console.log(graph);
+	if (cycle == null) {
+		cycle = [];
 		amount_reduce = 0;
 	} else {
-		for (let i = 0; i < circle.length; ++i){
-			amount_reduce = Math.min(graph[circle[i]][circle[(i+1)%circle.length]],amount_reduce);
+		for (let i = 0; i < cycle.length; ++i){
+			amount_reduce = Math.min(graph.get(cycle[i]).get(cycle[(i+1)%cycle.length]),amount_reduce);
 		}
 		for (let i = 0; i < cycle.length; ++i) {
-			graph[cycle[i]][cycle[(i+1)%cycle.length]] -= amount_reduce;
+			graph.get(cycle[i]).get(cycle[(i+1)%cycle.length]) -= amount_reduce;
 		} 
 	}
-	return BlockchainSplitwise.add_IOU(creditor, amount, circle, amount_reduce);
+	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle, amount_reduce);
 }
 
 // =============================================================================
