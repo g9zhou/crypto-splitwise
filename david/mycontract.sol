@@ -15,17 +15,12 @@ contract Splitwise {
         return balances[debtor][creditor];
     }
 
-    function add_IOU(address creditor, uint32 amount, address[] calldata cycle, bool clockwise, uint32 amount_reduce) public
+    function add_IOU(address creditor, uint32 amount, address[] calldata cycle, uint32 amount_reduce) public
     {
         balances[msg.sender][creditor] += amount;
         for (uint32 i = 0; i < cycle.length; i++) {
-            if (clockwise) {
-                balances[cycle[i]][cycle[(i+1)%cycle.length]] -= amount_reduce;
-            } else {
-                balances[cycle[(i+1)%cycle.length]][cycle[i]] -= amount_reduce;
-            }
+            balances[cycle[(i+1)%cycle.length]][cycle[i]] -= amount_reduce;
         }
         // todo: add security check
     }
-
 }

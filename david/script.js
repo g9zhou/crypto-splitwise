@@ -28,11 +28,6 @@ var abi = [
 			"type": "address[]"
 		  },
 		  {
-			"internalType": "bool",
-			"name": "clockwise",
-			"type": "bool"
-		  },
-		  {
 			"internalType": "uint32",
 			"name": "amount_reduce",
 			"type": "uint32"
@@ -67,12 +62,12 @@ var abi = [
 		"stateMutability": "view",
 		"type": "function"
 	  }
-	]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
+]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
 // ============================================================
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0x95401dc811bb5740090279Ba06cfA8fcF6113778"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -82,22 +77,8 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 
 
 // TODO: Add any helper functions here!
-async function getNeighbors(node) {
-	let neighbors = [];
-	let users = await getUsers();
-	for (const user of users)
-	{
-		// user is creditor
-		debt = await BlockchainSplitwise.lookup(node, user);
-		if (debt > 0)
-		{
-			neighbors.push(user);
-		}
-	}
-	return neighbors;
-}
 
-async function getNeighborsReverse(node) {
+async function getNeighbors(node) {
 	let neighbors = [];
 	let users = await getUsers();
 	for (const user of users)
@@ -158,36 +139,21 @@ async function getLastActive(user) {
 // The amount you owe them is passed as 'amount'
 async function add_IOU(creditor, amount) {
 	let cycle = await doBFS(defaultAccount, creditor, getNeighbors);
-	let reverseCycle = await doBFS(defaultAccount, creditor, getNeighborsReverse);
-	if (cycle == null && reverseCycle == null)
+	if (cycle == null)
 	{
-		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, [], false, 0);
+		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, [], 0);
 	}
 	console.log("cycle: ", cycle);
-	console.log("reverseCycle: ", reverseCycle);
 	amount_reduce = Number.MAX_SAFE_INTEGER;
-	if (cycle != null)
+	for (let i = 0; i < cycle.length-1; ++i)
 	{
-		for (let i = 0; i < cycle.length; ++i)
-		{
-			amount_owed = await BlockchainSplitwise.lookup(cycle[i], cycle[(i+1)%cycle.length]);
-			console.log("amount_owed from ", cycle[i], " to ", cycle[(i+1)%cycle.length], ": ", amount_owed);
-			amount_reduce = Math.min(amount_owed, amount_reduce);
-		}	
-		console.log("amount_reduce: ", amount_reduce);
-		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle, true, amount_reduce);
+		amount_owed = await BlockchainSplitwise.lookup(cycle[(i+1)%cycle.length], cycle[i]);
+		console.log("amount_owed from ", cycle[(i+1)%cycle.length], " to ", cycle[i], ": ", amount_owed);
+		amount_reduce = Math.min(amount_owed, amount_reduce);
 	}
-	if (reverseCycle != null)
-	{
-		for (let i = 0; i < reverseCycle.length-1; ++i)
-		{
-			amount_owed = await BlockchainSplitwise.lookup(reverseCycle[(i+1)%reverseCycle.length], reverseCycle[i]);
-			console.log("amount_owed from ", reverseCycle[(i+1)%reverseCycle.length], " to ", reverseCycle[i], ": ", amount_owed);
-			amount_reduce = Math.min(amount_owed, amount_reduce);
-		}
-		console.log("amount_reduce: ", amount_reduce);
-		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, reverseCycle, false, amount_reduce);
-	}
+	amount_reduce = Math.min(amount, amount_reduce);
+	console.log("amount_reduce: ", amount_reduce);
+	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle, amount_reduce);
 }
 
 // =============================================================================
