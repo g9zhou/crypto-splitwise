@@ -95,36 +95,29 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 // =============================================================================
 
 // TODO: Add any helper functions here!
-var graph = new Map();
-
-async function update(debtor, creditor) {
-	debtor = debtor.toLowerCase();
-	creditor = creditor.toLowerCase();
-	var creditors = new Set();
-	if (graph.has(debtor)) {
-		creditors = graph.get(debtor);
-	}
-	creditors.add(creditor);
-	console.log(creditors)
-	graph.set(debtor,creditors);
-}
-
 async function getNeighbors(node) {
-	node = node.toLowerCase();
-	if (graph.size < 1 || !graph.has(node)) return [];
-	var creditors = graph.get(node);
-	var neighbors = [];
-	if (creditors == null) return [];
-	for (const creditor of creditors) { neighbors.push(creditor);}
+	let neighbors = [];
+	let users = await getUsers();
+	for (const user of users)
+	{
+		// user is debtor
+		credit = await BlockchainSplitwise.lookup(user, node);
+		if (credit > 0)
+		{
+			neighbors.push(user);
+		}
+	}
 	return neighbors;
 }
+
 
 // TODO: Return a list of all users (creditors or debtors) in the system
 // All users in the system are everyone who has ever sent or received an IOU
 async function getUsers() {
 	let users = new Set();
-	var history = await getAllFunctionCalls(contractAddress,"add_IOU");
-	for (const call of history) {
+	let history = await getAllFunctionCalls(contractAddress, "add_IOU");
+	for (const call of history)
+	{
 		users.add(call.from.toLowerCase());
 		users.add(call.args[0].toLowerCase());
 	}
@@ -133,13 +126,10 @@ async function getUsers() {
 
 // TODO: Get the total amount owed by the user specified by 'user'
 async function getTotalOwed(user) {
-	user = user.toLowerCase();
-	var amount = Number(0);
-	var creditors = graph.get(user);
-	console.log(creditors);
-	if (creditors == null) return 0;
-	for (const creditor of creditors) {
-		var debt = await BlockchainSplitwise.lookup(user, creditor);
+	let amount = Number(0);
+	let users = await getUsers();
+	for (const creditor of users) {
+		let debt = await BlockchainSplitwise.lookup(user.toLowerCase(), creditor);
 		amount += debt;
 	}
 	return amount;
@@ -149,27 +139,38 @@ async function getTotalOwed(user) {
 // Return null if you can't find any activity for the user.
 // HINT: Try looking at the way 'getAllFunctionCalls' is written. You can modify it if you'd like.
 async function getLastActive(user) {
-	user = user.toLowerCase();
-	let history = await getAllFunctionCalls(contractAddress,"add_IOU");
-	var last = 0;
-	for (const call of history) {
-		if (call.from.toLowerCase() == user || call.args[0].toLowerCase() == user) {
+	let history = await getAllFunctionCalls(contractAddress, "add_IOU");
+	let last = null;
+	for (const call of history)
+	{
+		if (call.from.toLowerCase() == user.toLowerCase() || call.args[0].toLowerCase() == user.toLowerCase())
+		{
 			last = call.t;
 		}
 	}
-	return last == 0 ? null : last;
+	return last;
 }
 
 // TODO: add an IOU ('I owe you') to the system
 // The person you owe money is passed as 'creditor'
 // The amount you owe them is passed as 'amount'
 async function add_IOU(creditor, amount) {
-	creditor = creditor.toLowerCase();
-	defaultAccount = defaultAccount.toLowerCase();
-	await update(defaultAccount, creditor);
-	let cycle = await doBFS(defaultAccount, creditor,getNeighbors);
-	if (cycle == null) {cycle = [];}
-	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, Number(amount), cycle);
+	let cycle = await doBFS(defaultAccount, creditor, getNeighbors);
+	if (cycle == null)
+	{
+		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, []);
+	}
+	// console.log("cycle: ", cycle);
+	// amount_reduce = Number.MAX_SAFE_INTEGER;
+	// for (let i = 0; i < cycle.length-1; ++i)
+	// {
+	// 	amount_owed = await BlockchainSplitwise.lookup(cycle[(i+1)%cycle.length], cycle[i]);
+	// 	console.log("amount_owed from ", cycle[(i+1)%cycle.length], " to ", cycle[i], ": ", amount_owed);
+	// 	amount_reduce = Math.min(amount_owed, amount_reduce);
+	// }
+	// amount_reduce = Math.min(amount, amount_reduce);
+	// console.log("amount_reduce: ", amount_reduce);
+	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle);
 }
 // =============================================================================
 //                              Provided Functions
