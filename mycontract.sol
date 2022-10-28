@@ -24,6 +24,7 @@ contract Splitwise {
                 amount_reduce = balances[cycle[i]][cycle[(i+1)%cycle.length]];
             }
         }
+        if (amount_reduce == 0 || amount_reduce == 2**32-1) return;
         for (uint32 i = 0; i < cycle.length; i++) {
             balances[cycle[i]][cycle[(i+1)%cycle.length]] -= amount_reduce;
         }
