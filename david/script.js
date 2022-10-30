@@ -67,7 +67,7 @@ var abi = [
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x809d550fca64d94Bd9F66E60752A544199cfAC3D"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -335,4 +335,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-// sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
+sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
