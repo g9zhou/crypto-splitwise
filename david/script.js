@@ -26,11 +26,6 @@ var abi = [
 			"internalType": "address[]",
 			"name": "cycle",
 			"type": "address[]"
-		  },
-		  {
-			"internalType": "uint32",
-			"name": "amount_reduce",
-			"type": "uint32"
 		  }
 		],
 		"name": "add_IOU",
@@ -61,13 +56,13 @@ var abi = [
 		],
 		"stateMutability": "view",
 		"type": "function"
-	  }
+	  }  
 ]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
 // ============================================================
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0x809d550fca64d94Bd9F66E60752A544199cfAC3D"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -141,19 +136,9 @@ async function add_IOU(creditor, amount) {
 	let cycle = await doBFS(defaultAccount, creditor, getNeighbors);
 	if (cycle == null)
 	{
-		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, [], 0);
+		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, []);
 	}
-	console.log("cycle: ", cycle);
-	amount_reduce = Number.MAX_SAFE_INTEGER;
-	for (let i = 0; i < cycle.length-1; ++i)
-	{
-		amount_owed = await BlockchainSplitwise.lookup(cycle[(i+1)%cycle.length], cycle[i]);
-		console.log("amount_owed from ", cycle[(i+1)%cycle.length], " to ", cycle[i], ": ", amount_owed);
-		amount_reduce = Math.min(amount_owed, amount_reduce);
-	}
-	amount_reduce = Math.min(amount, amount_reduce);
-	console.log("amount_reduce: ", amount_reduce);
-	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle, amount_reduce);
+	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle);
 }
 
 // =============================================================================
