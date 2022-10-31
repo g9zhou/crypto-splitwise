@@ -37,6 +37,30 @@ var abi = [
 		"inputs": [
 		  {
 			"internalType": "address",
+			"name": "",
+			"type": "address"
+		  },
+		  {
+			"internalType": "address",
+			"name": "",
+			"type": "address"
+		  }
+		],
+		"name": "balances",
+		"outputs": [
+		  {
+			"internalType": "uint32",
+			"name": "",
+			"type": "uint32"
+		  }
+		],
+		"stateMutability": "view",
+		"type": "function"
+	  },
+	  {
+		"inputs": [
+		  {
+			"internalType": "address",
 			"name": "debtor",
 			"type": "address"
 		  },
@@ -50,19 +74,19 @@ var abi = [
 		"outputs": [
 		  {
 			"internalType": "uint32",
-			"name": "ret",
+			"name": "",
 			"type": "uint32"
 		  }
 		],
 		"stateMutability": "view",
 		"type": "function"
-	  }  
-]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
+	  }
+	]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
 // ============================================================
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0x04C89607413713Ec9775E14b954286519d836FEf"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x21dF544947ba3E8b3c32561399E88B52Dc8b2823"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -70,9 +94,7 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 //                            Functions To Implement
 // =============================================================================
 
-
 // TODO: Add any helper functions here!
-
 async function getNeighbors(node) {
 	let neighbors = [];
 	let users = await getUsers();
@@ -138,9 +160,18 @@ async function add_IOU(creditor, amount) {
 	{
 		return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, []);
 	}
+	// console.log("cycle: ", cycle);
+	// amount_reduce = Number.MAX_SAFE_INTEGER;
+	// for (let i = 0; i < cycle.length-1; ++i)
+	// {
+	// 	amount_owed = await BlockchainSplitwise.lookup(cycle[(i+1)%cycle.length], cycle[i]);
+	// 	console.log("amount_owed from ", cycle[(i+1)%cycle.length], " to ", cycle[i], ": ", amount_owed);
+	// 	amount_reduce = Math.min(amount_owed, amount_reduce);
+	// }
+	// amount_reduce = Math.min(amount, amount_reduce);
+	// console.log("amount_reduce: ", amount_reduce);
 	return BlockchainSplitwise.connect(provider.getSigner(defaultAccount)).add_IOU(creditor, amount, cycle);
 }
-
 // =============================================================================
 //                              Provided Functions
 // =============================================================================
