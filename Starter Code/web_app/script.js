@@ -86,7 +86,7 @@ var abi = [
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0x36b58F5C1969B7b6591D752ea6F5486D069010AB"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x1c85638e118b37167e9298c2268758e058DdfDA0"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -351,4 +351,53 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
+async function customCheck() {
+	await sanityCheck();
+
+	console.log ("\nTEST", "Starting custom checks, after sanity check");
+	var accounts = await provider.listAccounts();
+	var score = 0;
+
+	// check owe 2-cycle
+	defaultAccount = accounts[1];
+	await add_IOU(accounts[0], "6");
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(1) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 4", owed === 4);
+
+	await add_IOU(accounts[0], "4");
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(1) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+
+	// check owe 3-cycle
+	defaultAccount = accounts[2];
+	await add_IOU(accounts[0], "10");
+	owed = await getTotalOwed(accounts[2]);
+	score += check("getTotalOwed(2) now 10", owed === 10);
+
+	defaultAccount = accounts[0];
+	await add_IOU(accounts[1], "10");
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 10", owed === 10);
+
+	defaultAccount = accounts[1];
+	await add_IOU(accounts[2], "10");
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(1) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[2]);
+	score += check("getTotalOwed(2) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+
+	// check owe self
+	await add_IOU(defaultAccount, "10");
+	owed = await getTotalOwed(defaultAccount);
+	score += check("getTotalOwed(1) now 0", owed === 0);
+
+}
+
 // sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
+// customCheck()
